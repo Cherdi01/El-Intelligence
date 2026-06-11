@@ -1,8 +1,0 @@
-{
-  "appId": "de.elena.eli",
-  "appName": "EL Intelligence",
-  "webDir": "www",
-  "ios": {
-    "contentInset": "always"
-  }
-}
