@@ -1,0 +1,8 @@
+{
+  "appId": "de.elena.eli",
+  "appName": "ELI",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always"
+  }
+}

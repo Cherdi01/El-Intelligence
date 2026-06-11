@@ -1,0 +1,49 @@
+# Codemagic baut die iOS-App auf einem Cloud-Mac und lädt sie zu TestFlight.
+# Voraussetzungen, die du EINMALIG in der Codemagic-Oberfläche einrichtest:
+#  1. App Store Connect Integration verbinden (Apple Account)
+#  2. Automatisches Code Signing für Bundle-ID  de.elena.eli  aktivieren
+# Doku: https://docs.codemagic.io/yaml-code-signing/signing-ios/
+
+workflows:
+  ios-eli:
+    name: ELI iOS Build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: CodemagicAppStore   # <- Name deiner ASC-Integration in Codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: de.elena.eli
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "de.elena.eli"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: NPM-Pakete installieren
+        script: npm install
+      - name: iOS-Plattform hinzufügen
+        script: npx cap add ios || true
+      - name: Web-Assets synchronisieren
+        script: npx cap sync ios
+      - name: App-Icons generieren (falls assets/ vorhanden)
+        script: |
+          npx capacitor-assets generate --ios || echo "assets-Schritt übersprungen"
+      - name: Signing-Profile setzen
+        script: xcode-project use-profiles
+      - name: IPA bauen
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # submit_to_app_store: false   # für echtes Release später auf true
