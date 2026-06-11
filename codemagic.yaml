@@ -1,8 +1,14 @@
 # Codemagic baut die iOS-App auf einem Cloud-Mac und lädt sie zu TestFlight.
-# Voraussetzungen, die du EINMALIG in der Codemagic-Oberfläche einrichtest:
-#  1. App Store Connect Integration verbinden (Apple Account)
-#  2. Automatisches Code Signing für Bundle-ID  de.elena.eli  aktivieren
-# Doku: https://docs.codemagic.io/yaml-code-signing/signing-ios/
+#
+# Code Signing (gemäß Codemagic-Support):
+#  - KEIN ios_signing-Block (das war der Weg, der scheiterte)
+#  - Stattdessen erzeugt fetch-signing-files mit CERTIFICATE_PRIVATE_KEY
+#    automatisch Zertifikat + Provisioning-Profil bei Apple (--create).
+#
+# Voraussetzungen in Codemagic (einmalig):
+#  1. App Store Connect / Developer Portal Integration, Reference Name: CodemagicAppStore
+#  2. Environment-Variable CERTIFICATE_PRIVATE_KEY (Gruppe: code-signing)
+#     mit dem RSA-Schlüssel (-----BEGIN RSA PRIVATE KEY----- ... -----END...-----)
 
 workflows:
   ios-eli:
@@ -10,11 +16,10 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
     integrations:
-      app_store_connect: CodemagicAppStore   # <- Name deiner ASC-Integration in Codemagic
+      app_store_connect: CodemagicAppStore
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: de.elena.eli
+      groups:
+        - code-signing
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
@@ -31,9 +36,16 @@ workflows:
         script: npx cap sync ios
       - name: App-Icons generieren (falls assets/ vorhanden)
         script: |
-          npx capacitor-assets generate --ios || echo "assets-Schritt übersprungen"
-      - name: Signing-Profile setzen
-        script: xcode-project use-profiles
+          npx capacitor-assets generate --ios || echo "assets-Schritt uebersprungen"
+      - name: Code Signing einrichten (Zertifikat + Profil erstellen)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "de.elena.eli" \
+            --type IOS_APP_STORE \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: IPA bauen
         script: |
           xcode-project build-ipa \
@@ -46,4 +58,3 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        # submit_to_app_store: false   # für echtes Release später auf true
