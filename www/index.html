@@ -60,7 +60,10 @@ textarea:focus{border-color:var(--au);}
 .btn-p:hover{opacity:.9;}.btn-p:active{transform:scale(.98);}.btn-p:disabled{opacity:.5;cursor:not-allowed;}
 .btn-s{width:100%;padding:12px;background:linear-gradient(135deg,var(--ap),var(--au));color:white;border:none;border-radius:var(--rs);font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;margin-top:.6rem;transition:opacity .2s;}
 .btn-s:hover{opacity:.9;}
-.file-chip{display:flex;align-items:center;gap:8px;background:var(--pm);border-radius:var(--rs);padding:9px 13px;font-size:13px;font-weight:600;color:var(--td);margin-bottom:7px;}
+.file-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--pm);border-radius:var(--rs);padding:9px 13px;font-size:13px;font-weight:600;color:var(--td);margin-bottom:7px;}
+.file-chip>span{flex:1;min-width:0;word-break:break-word;}
+.file-del{flex-shrink:0;border:none;background:rgba(0,0,0,0.08);color:var(--td);width:24px;height:24px;border-radius:50%;font-size:13px;font-weight:800;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;}
+.file-del:hover{background:rgba(0,0,0,0.18);}
 .file-chip.loading{background:var(--py);}
 .file-chip.err{background:#FFE8E8;color:#C62828;}
 .prog-bar{background:var(--pu);border-radius:40px;height:8px;margin-bottom:.4rem;overflow:hidden;}
@@ -305,7 +308,7 @@ if (window.pdfjsLib) {
 // ===== KONFIGURATION =====
 // Nach dem Vercel-Deploy hier deine Proxy-URL eintragen, z.B.
 // const BACKEND_URL = 'https://eli-proxy.vercel.app/api/generate';
-const BACKEND_URL = 'el-intelligence.vercel.app/api/generate';
+const BACKEND_URL = 'https://DEINE_VERCEL_URL.vercel.app/api/generate';
 
 // Tageslimit pro Gerät (Schutz vor versehentlicher Vielnutzung & Kosten).
 // Auf 0 setzen = kein Limit.
@@ -465,11 +468,17 @@ async function extractPdf(file,entry){
 
 function renderFileList(){
   document.getElementById('uploadedList').innerHTML=uploadedFiles.map((f,i)=>{
-    if(f.status==='loading') return `<div class="file-chip loading">⏳ ${f.name} – wird gelesen...</div>`;
-    if(f.status==='err') return `<div class="file-chip err">⚠️ ${f.name} – ${f.errMsg||'konnte nicht gelesen werden'}</div>`;
+    const del=`<button class="file-del" onclick="removeFile(${i})" aria-label="Entfernen">✕</button>`;
+    if(f.status==='loading') return `<div class="file-chip loading"><span>⏳ ${f.name} – wird gelesen...</span>${del}</div>`;
+    if(f.status==='err') return `<div class="file-chip err"><span>⚠️ ${f.name} – ${f.errMsg||'konnte nicht gelesen werden'}</span>${del}</div>`;
     const words=f.text.trim().split(/\s+/).length;
-    return `<div class="file-chip">✅ ${f.name} – ${words} Wörter erkannt</div>`;
+    return `<div class="file-chip"><span>✅ ${f.name} – ${words} Wörter erkannt</span>${del}</div>`;
   }).join('');
+}
+
+function removeFile(i){
+  uploadedFiles.splice(i,1);
+  renderFileList();
 }
 
 function collectText(){
@@ -508,7 +517,7 @@ async function startQuiz(catNameOverride){
       <div class="err-state">
         <p style="font-size:34px">😢</p>
         <p style="font-weight:800;margin-top:.5rem;color:var(--td)">Das hat nicht geklappt</p>
-        <p style="font-size:13px;color:var(--tm);margin-top:6px;line-height:1.5">${e.message}</p>
+        <p style="font-size:13px;color:var(--tm);margin-top:6px;line-height:1.5">${(e&&e.name?e.name+": ":"")+(e&&e.message?e.message:e)}</p>
         <button class="btn-p" style="max-width:220px;margin:1.2rem auto 0" onclick="switchTab('upload')">Nochmal versuchen 🌸</button>
       </div>`;
     setMascot('Oink... versuch es nochmal! 🌱');
@@ -722,7 +731,7 @@ async function startQuizFromText(text,catName){
     QS={...QS,questions:qs,current:0,score:0,answered:false,wrongQuestions:[]};
     renderQuestion();
   }catch(e){
-    document.getElementById('quizContent').innerHTML=`<div class="err-state"><p style="font-size:34px">😢</p><p style="font-weight:800;margin-top:.5rem">Das hat nicht geklappt</p><p style="font-size:13px;color:var(--tm);margin-top:6px">${e.message}</p><button class="btn-p" style="max-width:220px;margin:1.2rem auto 0" onclick="switchTab('upload')">Zurück 🌸</button></div>`;
+    document.getElementById('quizContent').innerHTML=`<div class="err-state"><p style="font-size:34px">😢</p><p style="font-weight:800;margin-top:.5rem">Das hat nicht geklappt</p><p style="font-size:13px;color:var(--tm);margin-top:6px">${(e&&e.name?e.name+": ":"")+(e&&e.message?e.message:e)}</p><button class="btn-p" style="max-width:220px;margin:1.2rem auto 0" onclick="switchTab('upload')">Zurück 🌸</button></div>`;
   }
 }
 function deleteCat(i){G.categories.splice(i,1);saveState();renderSavedCats();}
